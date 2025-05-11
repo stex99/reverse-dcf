@@ -30,7 +30,31 @@ def get_fcf(ticker):
 
     return ocf + capex
 
-def reverse_dcf(fcf, market_price, discount_rate=0.10, projection_years=5, terminal_growth=0.025):
+
+def reverse_dcf(fcf, market_price, shares_outstanding, discount_rate=0.10, projection_years=5, terminal_growth=0.025):
+    if fcf is None or fcf <= 0 or market_price is None or market_price <= 0 or shares_outstanding is None or shares_outstanding <= 0:
+        return None
+
+    def npv_given_growth(growth_rate):
+        npv = sum(
+            fcf * (1 + growth_rate) ** year / (1 + discount_rate) ** year
+            for year in range(1, projection_years + 1)
+        )
+        terminal = (fcf * (1 + growth_rate) ** projection_years) * (1 + terminal_growth) / (discount_rate - terminal_growth)
+        terminal_discounted = terminal / ((1 + discount_rate) ** projection_years)
+        total_value = npv + terminal_discounted
+        return total_value / shares_outstanding  # per-share NPV
+
+    low, high = -0.5, 1.0
+    for _ in range(100):
+        mid = (low + high) / 2
+        npv = npv_given_growth(mid)
+        if npv > market_price:
+            high = mid
+        else:
+            low = mid
+    return round(mid, 4)
+
     if fcf is None or fcf <= 0 or market_price is None or market_price <= 0:
         return None
 
@@ -91,7 +115,7 @@ for _, row in portfolio_df.iterrows():
     fcf = get_fcf(ticker)
     stock = yf.Ticker(ticker)
     current_price = stock.info.get("currentPrice", None)
-    implied_growth = reverse_dcf(fcf, current_price, discount_rate, projection_years, terminal_growth)
+    implied_growth = reverse_dcf(fcf, current_price, shares_outstanding, discount_rate, projection_years, terminal_growth)
 
     results.append({
         "Portfolio": portfolio,
