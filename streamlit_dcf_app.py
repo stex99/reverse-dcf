@@ -114,7 +114,10 @@ for _, row in portfolio_df.iterrows():
 
     fcf = get_fcf(ticker)
     stock = yf.Ticker(ticker)
-    current_price = stock.info.get("currentPrice", None)
+    try:
+        current_price = stock.info.get("regularMarketPrice", None)
+    except:
+        current_price = None
     implied_growth = reverse_dcf(fcf, current_price, shares_outstanding, discount_rate, projection_years, terminal_growth)
 
     results.append({
