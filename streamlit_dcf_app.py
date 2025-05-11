@@ -92,7 +92,8 @@ for _, row in portfolio_df.iterrows():
         "Ticker": ticker,
         "Shares": shares,
         "Market Price ($)": round(current_price, 2) if current_price else None,
-        "Implied Growth Rate (%)": round(implied_growth * 100, 2) if implied_growth else None
+        "Implied Growth Rate (%)": round(implied_growth * 100, 2) if implied_growth else None,
+        "High Growth Flag": "⚠️" if implied_growth and implied_growth > 0.15 else ""
     })
 
 results_df = pd.DataFrame(results).dropna()
@@ -102,11 +103,11 @@ if sort_method == "Implied Growth Rate":
 elif sort_method == "Market Price":
     results_df = results_df.sort_values(by="Market Price ($)", ascending=False)
 
-st.dataframe(results_df, use_container_width=True)
+st.dataframe(results_df[["Portfolio", "Ticker", "Shares", "Implied Growth Rate (%)", "High Growth Flag"]], use_container_width=True)
 
 chart_df = results_df.melt(
     id_vars=["Portfolio", "Ticker"],
-    value_vars=["Implied Growth Rate (%)", "Market Price ($)"],
+    value_vars=["Implied Growth Rate (%)"],
     var_name="Type",
     value_name="Value"
 )
