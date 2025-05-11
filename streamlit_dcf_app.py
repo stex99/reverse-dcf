@@ -121,9 +121,8 @@ base = alt.Chart(chart_df).encode(
 )
 
 bars = base.transform_filter(alt.datum.Type == "Implied Growth Rate (%)").mark_bar()
-line = base.transform_filter(alt.datum.Type == "Market Price ($)").mark_line(point=True, strokeDash=[4, 2])
 
-combined = (bars + line).properties(height=400)
+combined = bars.properties(height=400)
 
 facet = alt.Facet("Portfolio:N", title="Portfolio")
 chart = alt.FacetChart(
