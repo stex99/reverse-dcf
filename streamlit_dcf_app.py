@@ -11,30 +11,23 @@ st.set_page_config(page_title="Reverse DCF Analyzer", layout="wide")
 def get_fcf(ticker):
     stock = yf.Ticker(ticker)
     cf = stock.cashflow
-
     if cf is None or cf.empty:
         return None
-
     def find_label(possible_labels):
         for label in possible_labels:
             for idx in cf.index:
                 if label.lower() in idx.lower():
                     return cf.loc[idx].iloc[0]
         return None
-
     ocf = find_label(['Total Cash From Operating Activities', 'Operating Cash Flow'])
     capex = find_label(['Capital Expenditures', 'Capital Expenditures - Fixed Assets'])
-
     if ocf is None or capex is None:
         return stock.info.get("freeCashflow", None)
-
     return ocf + capex
-
 
 def reverse_dcf(fcf, market_price, shares_outstanding, discount_rate=0.10, projection_years=5, terminal_growth=0.025):
     if fcf is None or fcf <= 0 or market_price is None or market_price <= 0 or shares_outstanding is None or shares_outstanding <= 0:
         return None
-
     def npv_given_growth(growth_rate):
         npv = sum(
             fcf * (1 + growth_rate) ** year / (1 + discount_rate) ** year
@@ -43,36 +36,11 @@ def reverse_dcf(fcf, market_price, shares_outstanding, discount_rate=0.10, proje
         terminal = (fcf * (1 + growth_rate) ** projection_years) * (1 + terminal_growth) / (discount_rate - terminal_growth)
         terminal_discounted = terminal / ((1 + discount_rate) ** projection_years)
         total_value = npv + terminal_discounted
-        return total_value / shares_outstanding  # per-share NPV
-
+        return total_value / shares_outstanding
     low, high = -0.5, 1.0
     for _ in range(100):
         mid = (low + high) / 2
         npv = npv_given_growth(mid)
-        if npv > market_price:
-            high = mid
-        else:
-            low = mid
-    return round(mid, 4)
-
-    if fcf is None or fcf <= 0 or market_price is None or market_price <= 0:
-        return None
-
-    def npv_given_growth(growth_rate):
-        npv = sum(
-            fcf * (1 + growth_rate) ** year / (1 + discount_rate) ** year
-            for year in range(1, projection_years + 1)
-        )
-        terminal = (fcf * (1 + growth_rate) ** projection_years) * (1 + terminal_growth) / (discount_rate - terminal_growth)
-        terminal_discounted = terminal / ((1 + discount_rate) ** projection_years)
-        return npv + terminal_discounted
-
-    low, high = -0.5, 1.0
-    for _ in range(100):
-        mid = (low + high) / 2
-        npv = npv_given_growth(mid)
-        if npv is None:
-            return None
         if npv > market_price:
             high = mid
         else:
@@ -111,15 +79,14 @@ for _, row in portfolio_df.iterrows():
     ticker = row["Ticker"]
     shares = row["Shares"]
     portfolio = row["Portfolio"]
-
     fcf = get_fcf(ticker)
     stock = yf.Ticker(ticker)
     try:
         current_price = stock.info.get("regularMarketPrice", None)
     except:
         current_price = None
+    shares_outstanding = stock.info.get("sharesOutstanding", None)
     implied_growth = reverse_dcf(fcf, current_price, shares_outstanding, discount_rate, projection_years, terminal_growth)
-
     results.append({
         "Portfolio": portfolio,
         "Ticker": ticker,
@@ -156,20 +123,9 @@ base = alt.Chart(chart_df).encode(
 bars = base.transform_filter(alt.datum.Type == "Implied Growth Rate (%)").mark_bar()
 line = base.transform_filter(alt.datum.Type == "Market Price ($)").mark_line(point=True, strokeDash=[4, 2])
 
-
-facet = alt.Facet("Portfolio:N", title="Portfolio")
-chart = alt.Chart(chart_df).encode(
-    x=alt.X("Ticker:N", title="Stock"),
-    y=alt.Y("Value:Q", title="Value"),
-    color=alt.Color("Type:N"),
-    tooltip=["Portfolio", "Ticker", "Type", "Value"]
-)
-
-bars = chart.transform_filter(alt.datum.Type == "Implied Growth Rate (%)").mark_bar()
-line = chart.transform_filter(alt.datum.Type == "Market Price ($)").mark_line(point=True, strokeDash=[4, 2])
-
 combined = (bars + line).properties(height=400)
 
+facet = alt.Facet("Portfolio:N", title="Portfolio")
 chart = alt.FacetChart(
     data=chart_df,
     facet=facet,
