@@ -129,9 +129,25 @@ base = alt.Chart(chart_df).encode(
 bars = base.transform_filter(alt.datum.Type == "Implied Growth Rate (%)").mark_bar()
 line = base.transform_filter(alt.datum.Type == "Market Price ($)").mark_line(point=True, strokeDash=[4, 2])
 
+
+facet = alt.Facet("Portfolio:N", title="Portfolio")
+chart = alt.Chart(chart_df).encode(
+    x=alt.X("Ticker:N", title="Stock"),
+    y=alt.Y("Value:Q", title="Value"),
+    color=alt.Color("Type:N"),
+    tooltip=["Portfolio", "Ticker", "Type", "Value"]
+)
+
+bars = chart.transform_filter(alt.datum.Type == "Implied Growth Rate (%)").mark_bar()
+line = chart.transform_filter(alt.datum.Type == "Market Price ($)").mark_line(point=True, strokeDash=[4, 2])
+
+combined = (bars + line).properties(height=400)
+
 chart = alt.FacetChart(
     data=chart_df,
-    facet=alt.Facet("Portfolio:N", title="Portfolio", columns=2),
-    spec=(bars + line).properties(height=400)
+    facet=facet,
+    spec=combined,
+    columns=2
 )
+
 st.altair_chart(chart, use_container_width=True)
