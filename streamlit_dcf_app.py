@@ -92,8 +92,7 @@ for _, row in portfolio_df.iterrows():
         "Ticker": ticker,
         "Shares": shares,
         "Market Price ($)": round(current_price, 2) if current_price else None,
-        "Implied Growth Rate (%)": round(implied_growth * 100, 2) if implied_growth else None,
-        "High Growth Flag": "⚠️" if implied_growth and implied_growth > 0.15 else ""
+        "Implied Growth Rate (%)": round(implied_growth * 100, 2) if implied_growth else None
     })
 
 results_df = pd.DataFrame(results).dropna()
@@ -103,11 +102,11 @@ if sort_method == "Implied Growth Rate":
 elif sort_method == "Market Price":
     results_df = results_df.sort_values(by="Market Price ($)", ascending=False)
 
-st.dataframe(results_df[["Portfolio", "Ticker", "Shares", "Implied Growth Rate (%)", "High Growth Flag"]], use_container_width=True)
+st.dataframe(results_df, use_container_width=True)
 
 chart_df = results_df.melt(
     id_vars=["Portfolio", "Ticker"],
-    value_vars=["Implied Growth Rate (%)"],
+    value_vars=["Implied Growth Rate (%)", "Market Price ($)"],
     var_name="Type",
     value_name="Value"
 )
@@ -135,3 +134,62 @@ chart = alt.FacetChart(
 )
 
 st.altair_chart(chart, use_container_width=True)
+
+
+# --------- Portfolio-Level Summary Table ---------
+summary_data = []
+for portfolio_name, group in results_df.groupby("Portfolio"):
+    avg_growth = group["Implied Growth Rate (%)"].mean()
+    high_growth_count = (group["Implied Growth Rate (%)"] > 15).sum()
+    total_count = len(group)
+    if avg_growth > 15:
+        summary = "Aggressive"
+    elif avg_growth > 5:
+        summary = "Reasonable"
+    else:
+        summary = "Conservative"
+    summary_data.append({
+        "Portfolio": portfolio_name,
+        "Avg Implied Growth (%)": round(avg_growth, 2),
+        "Flagged Stocks (>15%)": f"{high_growth_count}/{total_count}",
+        "Summary": summary
+    })
+
+summary_df = pd.DataFrame(summary_data)
+st.subheader("📋 Portfolio Summary")
+st.dataframe(summary_df, use_container_width=True)
+
+# --------- Sensitivity Analysis Table ---------
+st.subheader("📉 Sensitivity Analysis: Implied Growth vs. Discount Rate")
+
+def compute_sensitivity(fcf, price, shares_outstanding):
+    shifts = [-0.02, -0.01, 0.0, 0.01, 0.02]
+    results = []
+    for shift in shifts:
+        rate = discount_rate + shift
+        growth = reverse_dcf(fcf, price, shares_outstanding, rate, projection_years, terminal_growth)
+        results.append(round(growth * 100, 2) if growth else None)
+    return results
+
+sensitivity_rows = []
+for _, row in portfolio_df.iterrows():
+    ticker = row["Ticker"]
+    portfolio = row["Portfolio"]
+    stock = yf.Ticker(ticker)
+    fcf = get_fcf(ticker)
+    try:
+        price = stock.info.get("regularMarketPrice", None)
+        shares = stock.info.get("sharesOutstanding", None)
+    except:
+        price = None
+        shares = None
+    if all([fcf, price, shares]):
+        sens = compute_sensitivity(fcf, price, shares)
+        sensitivity_rows.append({
+            "Portfolio": portfolio,
+            "Ticker": ticker,
+            "-2%": sens[0], "-1%": sens[1], "Base": sens[2], "+1%": sens[3], "+2%": sens[4]
+        })
+
+sensitivity_df = pd.DataFrame(sensitivity_rows)
+st.dataframe(sensitivity_df, use_container_width=True)
