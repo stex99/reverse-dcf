@@ -53,11 +53,11 @@ def reverse_dcf(fcf, market_price, shares_outstanding, discount_rate=0.10, stage
 
 
 with st.sidebar.expander("📈 Stage 1"):
-    stage1_years = st.slider("Years", 1, 10, 5)
+    stage1_years = st.slider("Stage 1 Duration (Years)", 1, 10, 5)
 
 with st.sidebar.expander("📉 Stage 2"):
     stage2_growth = st.slider("Growth Rate (%)", 0.0, 10.0, 4.0, 0.1) / 100
-    stage2_years = st.slider("Years", 1, 10, 5)
+    stage2_years = st.slider("Stage 2 Duration (Years)", 1, 10, 5)
 
 with st.sidebar.expander("⚙️ Other Settings"):
     discount_rate = st.slider("Discount Rate (%)", 5.0, 15.0, 10.0, 0.25) / 100
