@@ -143,7 +143,20 @@ growth_chart = alt.Chart(filtered_df).mark_bar().encode(
     tooltip=["Ticker", "Implied Growth (%)", "Realism"]
 ).properties(height=400)
 
+
+# Sync chart colors with realism classifications
+color_scale = alt.Scale(domain=["🟦 Conservative", "🟨 Reasonable", "🔴 Aggressive"],
+                        range=["#1f77b4", "#ffdd57", "#d62728"])
+
+growth_chart = alt.Chart(filtered_df).mark_bar().encode(
+    x=alt.X("Ticker:N", title="Stock"),
+    y=alt.Y("Implied Growth (%)", title="Implied Growth Rate"),
+    color=alt.Color("Realism:N", title="Realism", scale=color_scale),
+    tooltip=["Ticker", "Implied Growth (%)", "Realism"]
+).properties(height=400)
+
 st.altair_chart(growth_chart, use_container_width=True)
+
 
 
 # -------- Per-Stock DCF Details (Expander Style) --------
@@ -158,7 +171,10 @@ for _, row in filtered_df.iterrows():
         st.markdown(f"**Historical Growth Estimate:** {row['Hist Growth (Est)']}%")
         
         
-        # Generate per-year FCF projection (2-stage model)
+        
+        # Generate per-year FCF projection (2-stage model) and show table
+        st.markdown("### Per-Year DCF Breakdown")
+
         base_fcf = get_fcf(row["Ticker"])
         years = []
         growths = []
@@ -207,6 +223,7 @@ for _, row in filtered_df.iterrows():
         dcf_df = pd.DataFrame(dcf_data)
 
         csv = dcf_df.to_csv(index=False).encode("utf-8")
+        st.dataframe(dcf_df, use_container_width=True)
         st.download_button(
             label="📥 Download DCF Breakdown CSV",
             data=csv,
