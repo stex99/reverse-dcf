@@ -151,7 +151,49 @@ for _, row in filtered_df.iterrows():
         st.markdown(f"**Realism Rating:** {row['Realism']}")
         st.markdown(f"**Historical Growth Estimate:** {row['Hist Growth (Est)']}%")
         
-        # Create dummy breakdown as proof of concept
+        
+        # Generate per-year FCF projection (2-stage model)
+        base_fcf = get_fcf(row["Ticker"])
+        years = []
+        growths = []
+        fcfs = []
+        npvs = []
+        disc_rate = discount_rate
+        stage1 = stage1_years
+        stage2 = stage2_years
+        g2 = stage2_growth
+        g1 = row["Implied Growth (%)"] / 100
+        if not base_fcf or not g1 or g1 <= -1:
+            continue
+        for i in range(1, stage1 + stage2 + 1):
+            if i <= stage1:
+                growth = g1
+            else:
+                growth = g2
+            if i == 1:
+                fcf = base_fcf * (1 + growth)
+            else:
+                fcf = fcfs[-1] * (1 + growth)
+            npv = fcf / ((1 + disc_rate) ** i)
+            years.append(f"Year {i}")
+            growths.append(round(growth * 100, 2))
+            fcfs.append(round(fcf, 2))
+            npvs.append(round(npv, 2))
+
+        terminal_value = fcfs[-1] * (1 + terminal_growth) / (disc_rate - terminal_growth)
+        terminal_npv = terminal_value / ((1 + disc_rate) ** (stage1 + stage2))
+        years.append(f"Terminal Year")
+        growths.append(round(terminal_growth * 100, 2))
+        fcfs.append(round(terminal_value, 2))
+        npvs.append(round(terminal_npv, 2))
+
+        dcf_df = pd.DataFrame({
+            "Year": years,
+            "Growth Rate (%)": growths,
+            "Projected FCF": fcfs,
+            "Discounted NPV": npvs
+        })
+
         dcf_data = {
             "Metric": ["Implied Growth (%)", "10% MOS (%)", "20% MOS (%)", "Historical Growth (Est)"],
             "Value": [row["Implied Growth (%)"], row["10% MOS (%)"], row["20% MOS (%)"], row["Hist Growth (Est)"]]
