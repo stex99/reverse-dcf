@@ -175,7 +175,11 @@ for _, row in filtered_df.iterrows():
         # Generate per-year FCF projection (2-stage model) and show table
         st.markdown("### Per-Year DCF Breakdown")
 
+        
+        stock_exp = yf.Ticker(row["Ticker"])
         base_fcf = get_fcf(row["Ticker"])
+        shares = stock_exp.info.get("sharesOutstanding", None)
+
         years = []
         growths = []
         fcfs = []
@@ -185,7 +189,7 @@ for _, row in filtered_df.iterrows():
         stage2 = stage2_years
         g2 = stage2_growth
         g1 = row["Implied Growth (%)"] / 100
-        if not base_fcf or not g1 or g1 <= -1:
+        if not base_fcf or not g1 or g1 <= -1 or not shares or shares <= 0:
             continue
         for i in range(1, stage1 + stage2 + 1):
             if i <= stage1:
