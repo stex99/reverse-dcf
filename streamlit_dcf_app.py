@@ -150,4 +150,19 @@ for _, row in filtered_df.iterrows():
         st.markdown(f"**20% Margin of Safety Implied Growth:** {row['20% MOS (%)']}%")
         st.markdown(f"**Realism Rating:** {row['Realism']}")
         st.markdown(f"**Historical Growth Estimate:** {row['Hist Growth (Est)']}%")
-        st.markdown("*(Full per-year DCF breakdown export will be added next.)*")
+        
+        # Create dummy breakdown as proof of concept
+        dcf_data = {
+            "Metric": ["Implied Growth (%)", "10% MOS (%)", "20% MOS (%)", "Historical Growth (Est)"],
+            "Value": [row["Implied Growth (%)"], row["10% MOS (%)"], row["20% MOS (%)"], row["Hist Growth (Est)"]]
+        }
+        dcf_df = pd.DataFrame(dcf_data)
+
+        csv = dcf_df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download DCF Breakdown CSV",
+            data=csv,
+            file_name=f"{row['Ticker']}_dcf_breakdown.csv",
+            mime="text/csv"
+        )
+
