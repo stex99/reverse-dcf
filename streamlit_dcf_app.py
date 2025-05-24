@@ -51,12 +51,18 @@ def reverse_dcf(fcf, market_price, shares_outstanding, discount_rate=0.10, stage
             low = mid
     return round(mid, 4)
 
-st.sidebar.header("Reverse DCF Settings")
-discount_rate = st.sidebar.slider("Discount Rate (%)", 5.0, 15.0, 10.0, 0.25) / 100
-terminal_growth = st.sidebar.slider("Terminal Growth Rate (%)", 0.0, 6.0, 2.5, 0.1) / 100
-stage1_years = st.sidebar.slider("Stage 1 Years", 1, 10, 5)
-stage2_years = st.sidebar.slider("Stage 2 Years", 1, 10, 5)
-stage2_growth = st.sidebar.slider("Stage 2 Growth Rate (%)", 0.0, 10.0, 4.0, 0.1) / 100
+
+with st.sidebar.expander("📈 Stage 1"):
+    stage1_years = st.slider("Years", 1, 10, 5)
+
+with st.sidebar.expander("📉 Stage 2"):
+    stage2_growth = st.slider("Growth Rate (%)", 0.0, 10.0, 4.0, 0.1) / 100
+    stage2_years = st.slider("Years", 1, 10, 5)
+
+with st.sidebar.expander("⚙️ Other Settings"):
+    discount_rate = st.slider("Discount Rate (%)", 5.0, 15.0, 10.0, 0.25) / 100
+    terminal_growth = st.slider("Terminal Growth Rate (%)", 0.0, 6.0, 2.5, 0.1) / 100
+
 
 uploaded_files = st.file_uploader("Upload One or More Portfolio CSVs", type=["csv"], accept_multiple_files=True)
 
