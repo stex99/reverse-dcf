@@ -159,56 +159,40 @@ st.altair_chart(growth_chart, use_container_width=True)
 
 
 
-# -------- Per-Stock DCF Details (Expander Style) --------
+
+# -------- Per-Stock DCF Details with Projection --------
 st.subheader("🔍 Individual DCF Breakdown")
 
 for _, row in filtered_df.iterrows():
-    with st.expander(f"📊 {row['Ticker']} – Detailed DCF Analysis"):
-        st.markdown(f"**Implied Growth Rate:** {row['Implied Growth (%)']}%")
-        st.markdown(f"**10% Margin of Safety Implied Growth:** {row['10% MOS (%)']}%")
-        st.markdown(f"**20% Margin of Safety Implied Growth:** {row['20% MOS (%)']}%")
-        st.markdown(f"**Realism Rating:** {row['Realism']}")
-        st.markdown(f"**Historical Growth Estimate:** {row['Hist Growth (Est)']}%")
-        
-        
-        
-        # Generate per-year FCF projection (2-stage model) and show table
-        st.markdown("### Per-Year DCF Breakdown")
-
-        
-        stock_exp = yf.Ticker(row["Ticker"])
-        base_fcf = get_fcf(row["Ticker"])
+    ticker = row["Ticker"]
+    with st.expander(f"📊 {ticker} – Detailed DCF Analysis"):
+        stock_exp = yf.Ticker(ticker)
+        base_fcf = get_fcf(ticker)
+        price = stock_exp.info.get("regularMarketPrice", None)
         shares = stock_exp.info.get("sharesOutstanding", None)
+        implied_growth = reverse_dcf(base_fcf, price, shares, discount_rate, stage1_years, terminal_growth, stage2_growth, stage2_years)
 
-        years = []
-        growths = []
-        fcfs = []
-        npvs = []
-        disc_rate = discount_rate
-        stage1 = stage1_years
-        stage2 = stage2_years
-        g2 = stage2_growth
-        g1 = row["Implied Growth (%)"] / 100
-        if not base_fcf or not g1 or g1 <= -1 or not shares or shares <= 0:
+        if not base_fcf or not implied_growth or implied_growth <= -1 or not shares:
+            st.warning("Insufficient data to compute full projection.")
             continue
-        for i in range(1, stage1 + stage2 + 1):
-            if i <= stage1:
-                growth = g1
-            else:
-                growth = g2
+
+        # Recalculate per-year projection
+        years, growths, fcfs, npvs = [], [], [], []
+        for i in range(1, stage1_years + stage2_years + 1):
+            growth = implied_growth if i <= stage1_years else stage2_growth
             if i == 1:
                 fcf = base_fcf * (1 + growth)
             else:
                 fcf = fcfs[-1] * (1 + growth)
-            npv = fcf / ((1 + disc_rate) ** i)
+            npv = fcf / ((1 + discount_rate) ** i)
             years.append(f"Year {i}")
             growths.append(round(growth * 100, 2))
             fcfs.append(round(fcf, 2))
             npvs.append(round(npv, 2))
 
-        terminal_value = fcfs[-1] * (1 + terminal_growth) / (disc_rate - terminal_growth)
-        terminal_npv = terminal_value / ((1 + disc_rate) ** (stage1 + stage2))
-        years.append(f"Terminal Year")
+        terminal_value = fcfs[-1] * (1 + terminal_growth) / (discount_rate - terminal_growth)
+        terminal_npv = terminal_value / ((1 + discount_rate) ** (stage1_years + stage2_years))
+        years.append("Terminal Year")
         growths.append(round(terminal_growth * 100, 2))
         fcfs.append(round(terminal_value, 2))
         npvs.append(round(terminal_npv, 2))
@@ -220,18 +204,13 @@ for _, row in filtered_df.iterrows():
             "Discounted NPV": npvs
         })
 
-        dcf_data = {
-            "Metric": ["Implied Growth (%)", "10% MOS (%)", "20% MOS (%)", "Historical Growth (Est)"],
-            "Value": [row["Implied Growth (%)"], row["10% MOS (%)"], row["20% MOS (%)"], row["Hist Growth (Est)"]]
-        }
-        dcf_df = pd.DataFrame(dcf_data)
+        st.markdown(f"**Implied Growth Rate:** {round(implied_growth * 100, 2)}%")
+        st.dataframe(dcf_df, use_container_width=True)
 
         csv = dcf_df.to_csv(index=False).encode("utf-8")
-        st.dataframe(dcf_df, use_container_width=True)
         st.download_button(
             label="📥 Download DCF Breakdown CSV",
             data=csv,
-            file_name=f"{row['Ticker']}_dcf_breakdown.csv",
+            file_name=f"{ticker}_dcf_breakdown.csv",
             mime="text/csv"
         )
-
