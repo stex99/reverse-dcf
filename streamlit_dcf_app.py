@@ -138,3 +138,16 @@ growth_chart = alt.Chart(filtered_df).mark_bar().encode(
 ).properties(height=400)
 
 st.altair_chart(growth_chart, use_container_width=True)
+
+
+# -------- Per-Stock DCF Details (Expander Style) --------
+st.subheader("🔍 Individual DCF Breakdown")
+
+for _, row in filtered_df.iterrows():
+    with st.expander(f"📊 {row['Ticker']} – Detailed DCF Analysis"):
+        st.markdown(f"**Implied Growth Rate:** {row['Implied Growth (%)']}%")
+        st.markdown(f"**10% Margin of Safety Implied Growth:** {row['10% MOS (%)']}%")
+        st.markdown(f"**20% Margin of Safety Implied Growth:** {row['20% MOS (%)']}%")
+        st.markdown(f"**Realism Rating:** {row['Realism']}")
+        st.markdown(f"**Historical Growth Estimate:** {row['Hist Growth (Est)']}%")
+        st.markdown("*(Full per-year DCF breakdown export will be added next.)*")
